@@ -1,0 +1,37 @@
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import { config } from './config.js';
+import auth from './routes/auth.js';
+import listings from './routes/listings.js';
+import swaps from './routes/swaps.js';
+import orders from './routes/orders.js';
+import social from './routes/social.js';
+import admin from './routes/admin.js';
+import express2 from 'express';
+import { checkoutRouter, webhookHandler } from './routes/payments.js';
+import { serveUpload } from './routes/uploads.js';
+import { notFound, errorHandler } from './middleware/index.js';
+
+export const createApp = () => {
+  const app = express();
+  app.set('trust proxy', 1);
+  app.use(helmet());
+  app.use(cors({ origin: config.clientOrigin, credentials: true }));
+  app.post('/api/v1/payments/webhook', express2.raw({ type: 'application/json', limit: '50kb' }), webhookHandler);
+  app.use(express.json({ limit: '20kb' }));
+  app.use(cookieParser());
+  app.get('/api/v1/health', (_req, res) => res.json({ ok: true }));
+  app.use('/api/v1/auth', auth);
+  app.use('/api/v1/listings', listings);
+  app.use('/api/v1/swaps', swaps);
+  app.use('/api/v1/orders', orders);
+  app.use('/api/v1/payments', checkoutRouter);
+  app.get('/api/v1/uploads/:name', serveUpload);
+  app.use('/api/v1/admin', admin);
+  app.use('/api/v1', social);
+  app.use(notFound);
+  app.use(errorHandler);
+  return app;
+};
